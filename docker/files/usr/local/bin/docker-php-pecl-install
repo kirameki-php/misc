@@ -1,0 +1,45 @@
+#!/bin/bash
+
+set -ex
+
+ext_name="$1"
+ext_without_ver=${ext_name%-*}
+shift
+
+apk_del=
+if [ -n "${PHPIZE_DEPS}" ] && ! apk info --installed .phpize-deps > /dev/null; then
+	apk add --no-cache --virtual .phpize-deps ${PHPIZE_DEPS}
+	apk_del='.phpize-deps'
+fi
+
+# Temporary directory for building
+tmp_dir="/tmp/pear/temp/$ext_without_ver"
+
+# Set proxy settings
+if [[ ! -z "${HTTP_PROXY}" ]]; then
+	pear config-set http_proxy "${HTTP_PROXY}";
+fi
+
+# HACK: Since PhpRedis does not support options in pecl install, build it manually
+pecl install --onlyreqdeps --nobuild "$ext_name"
+cd "$tmp_dir"
+phpize
+./configure --enable-option-checking=fatal "$@"
+make -j "$(nproc)" && make install
+
+# Enable extension
+docker-php-ext-enable $ext_without_ver
+
+# Strip symbols to reduce file size
+ext_dir="$(php -d 'display_errors=stderr' -r 'echo ini_get("extension_dir");')"
+so_file_path="$ext_dir/$ext_without_ver.so"
+chmod +x "$so_file_path"
+strip -s "$so_file_path"
+
+# Cleanup temporary files
+rm -rf "$tmp_dir"
+
+# Cleanup apk packages
+if [ -n "$apk_del" ]; then
+  apk del --purge --no-network $apk_del
+fi
