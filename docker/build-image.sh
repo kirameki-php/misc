@@ -4,6 +4,8 @@ set -eux
 
 today=$(date +'%Y-%m-%d')
 
+docker login
+
 docker buildx build . \
   --platform linux/amd64,linux/arm64 \
   --push \
