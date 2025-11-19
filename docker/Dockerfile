@@ -12,6 +12,7 @@ RUN set -e \
     && apk add --no-cache --virtual=.build-deps autoconf g++ icu-dev make \
     && docker-php-ext-install -j$(nproc) bcmath intl opcache pcntl pdo pdo_mysql \
     && docker-php-pecl-install apcu \
+    && docker-php-pecl-install ast \
     && docker-php-pecl-install igbinary \
     && docker-php-pecl-install pcov \
     && docker-php-pecl-install redis --enable-redis-igbinary \
